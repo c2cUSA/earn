@@ -1,0 +1,63 @@
+# 1) Ensure folders exist
+mkdir -p backend/config backend/routes
+
+# 2) Fees config (edit values as needed)
+cat > backend/config/fees.json <<'JSON'
+{
+  "makerBps": 5,
+  "takerBps": 30,
+  "protocolFeeBps": 5,
+  "minFeeUSD": 0.10,
+  "pairOverrides": {
+    "SOL/USD": { "takerBps": 25 },
+    "USDC/USD": { "takerBps": 0, "makerBps": 0, "minFeeUSD": 0.00 }
+  }
+}
+JSON
+
+# 3) Quote route (uses your fee engine; keeps USD-only)
+cat > backend/routes/quote.js <<'JS'
+import { computeFee } from '../services/feeEngine.js'; // keep your existing export
+
+export function quote(req, res) {
+  try {
+    const { side, pair, price, qty } = req.body || {};
+    if (!side || !pair || typeof price !== 'number' || typeof qty !== 'number') {
+      return res.status(400).json({ ok:false, error:'invalid payload' });
+    }
+    // Enforce */USD launch
+    if (!String(pair).toUpperCase().endsWith('/USD')) {
+      return res.status(400).json({ ok:false, error:'pair must be */USD' });
+    }
+    // Compute fee (feeEngine should internally read backend/config/fees.json or
+    // already load it on import; if you instead expose loadFeeCfg, call it here).
+    const out = computeFee({ side, pair, price, qty });
+    return res.json({ ok:true, ...out });
+  } catch (e) {
+    return res.status(400).json({ ok:false, error: e.message });
+  }
+}
+JS
+
+# 4) Register route in the server (adds the line only if missing)
+if grep -q "app.post('/api/fee/quote'" backend/server.js 2>/dev/null; then
+  echo "Route already registered."
+else
+  # Insert just before the app.listen line; adjust if your file differs
+  awk '
+    /app\.listen\(/ && !done {
+      print "import { quote } from '\''./routes/quote.js'\'';";
+      print "app.post('\''/api/fee/quote'\'', usdOnly, quote);";
+      done=1
+    }1
+  ' backend/server.js > backend/server.js.tmp && mv backend/server.js.tmp backend/server.js
+fi
+
+# 5) Smoke test (adjust PORT if needed)
+PORT="${PORT:-5175}"
+node -e "console.log('skip if server is already running')"
+# If you run the server separately: npm run dev
+# Then, in a new shell:
+curl -s -X POST "http://localhost:${PORT}/api/fee/quote" \
+  -H 'content-type: application/json' -H 'x-quote-ccy: USD' \
+  -d '{"side":"taker","pair":"SOL/USD","price":100,"qty":1}' | jq .
