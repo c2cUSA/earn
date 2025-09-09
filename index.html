@@ -1,63 +1,82 @@
-# 1) Ensure folders exist
-mkdir -p backend/config backend/routes
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>C2C Earn — Connect to Collect</title>
+  <meta name="description" content="C2C Earn — Connect to Collect. Turn Code into Capital. Built on Solana. Made in USA." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">
+      <img src="assets/c2c-logo.svg" alt="C2C logo" class="logo" />
+      <div class="brand-text">
+        <h1>C2C Earn</h1>
+        <p class="tag">Connect to Collect</p>
+      </div>
+    </div>
+    <nav class="nav">
+      <a href="https://codetocapital.us">Main Site</a>
+      <a href="https://swap.codetocapital.us">Swap</a>
+      <a href="https://satellite.codetocapital.us">Satellite</a>
+      <a href="https://solar.codetocapital.us">Solar</a>
+    </nav>
+  </header>
 
-# 2) Fees config (edit values as needed)
-cat > backend/config/fees.json <<'JSON'
-{
-  "makerBps": 5,
-  "takerBps": 30,
-  "protocolFeeBps": 5,
-  "minFeeUSD": 0.10,
-  "pairOverrides": {
-    "SOL/USD": { "takerBps": 25 },
-    "USDC/USD": { "takerBps": 0, "makerBps": 0, "minFeeUSD": 0.00 }
-  }
-}
-JSON
+  <main class="hero">
+    <div class="hero-text">
+      <h2>Turn Code into Capital</h2>
+      <p>Non‑custodial. Solana‑native. Built for speed and security.</p>
+      <ul class="bullets">
+        <li>⚡ Low fees & fast finality</li>
+        <li>🛡️ Compliant by design</li>
+        <li>📈 On‑chain transparency</li>
+      </ul>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://swap.codetocapital.us">Launch App</a>
+        <a class="btn btn-ghost" href="https://github.com/c2cUSA/earn.codetocapital.us">View on GitHub</a>
+      </div>
+      <div class="badge">Made in USA 🇺🇸</div>
+    </div>
+    <div class="hero-art">
+      <div class="chip">
+        <div class="glow"></div>
+        <div class="ring"></div>
+        <div class="ring r2"></div>
+        <div class="ring r3"></div>
+        <span>C2C</span>
+      </div>
+    </div>
+  </main>
 
-# 3) Quote route (uses your fee engine; keeps USD-only)
-cat > backend/routes/quote.js <<'JS'
-import { computeFee } from '../services/feeEngine.js'; // keep your existing export
+  <section class="info">
+    <div class="card">
+      <h3>Non‑custodial</h3>
+      <p>Users keep control of their keys and assets at all times.</p>
+    </div>
+    <div class="card">
+      <h3>On‑chain Journaling</h3>
+      <p>Mint, Burn, and ParamChange events for verifiable transparency.</p>
+    </div>
+    <div class="card">
+      <h3>Dual‑Oracle Policy</h3>
+      <p>Pyth + Switchboard/Chainlink with freshness and deviation guards.</p>
+    </div>
+  </section>
 
-export function quote(req, res) {
-  try {
-    const { side, pair, price, qty } = req.body || {};
-    if (!side || !pair || typeof price !== 'number' || typeof qty !== 'number') {
-      return res.status(400).json({ ok:false, error:'invalid payload' });
-    }
-    // Enforce */USD launch
-    if (!String(pair).toUpperCase().endsWith('/USD')) {
-      return res.status(400).json({ ok:false, error:'pair must be */USD' });
-    }
-    // Compute fee (feeEngine should internally read backend/config/fees.json or
-    // already load it on import; if you instead expose loadFeeCfg, call it here).
-    const out = computeFee({ side, pair, price, qty });
-    return res.json({ ok:true, ...out });
-  } catch (e) {
-    return res.status(400).json({ ok:false, error: e.message });
-  }
-}
-JS
+  <footer class="site-footer">
+    <p>© 2025 C2C Consulting LLC. “Turn Code into Capital”.</p>
+    <p class="disclaimer">This site is a static launch page. No backend services run here. For APIs, use your configured Node host.</p>
+  </footer>
 
-# 4) Register route in the server (adds the line only if missing)
-if grep -q "app.post('/api/fee/quote'" backend/server.js 2>/dev/null; then
-  echo "Route already registered."
-else
-  # Insert just before the app.listen line; adjust if your file differs
-  awk '
-    /app\.listen\(/ && !done {
-      print "import { quote } from '\''./routes/quote.js'\'';";
-      print "app.post('\''/api/fee/quote'\'', usdOnly, quote);";
-      done=1
-    }1
-  ' backend/server.js > backend/server.js.tmp && mv backend/server.js.tmp backend/server.js
-fi
-
-# 5) Smoke test (adjust PORT if needed)
-PORT="${PORT:-5175}"
-node -e "console.log('skip if server is already running')"
-# If you run the server separately: npm run dev
-# Then, in a new shell:
-curl -s -X POST "http://localhost:${PORT}/api/fee/quote" \
-  -H 'content-type: application/json' -H 'x-quote-ccy: USD' \
-  -d '{"side":"taker","pair":"SOL/USD","price":100,"qty":1}' | jq .
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {{
+      document.body.classList.add('ready');
+    }});
+  </script>
+</body>
+</html>
